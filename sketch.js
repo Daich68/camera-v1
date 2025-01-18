@@ -30,6 +30,69 @@ let noiseGenerators = [];
 let masterVolume = 0.3;
 let isAudioStarted = false;
 
+// Recording variables
+let mediaRecorder;
+let recordedChunks = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('startRecording').onclick = startRecording;
+    document.getElementById('stopRecording').onclick = stopRecording;
+});
+
+async function startRecording() {
+    try {
+        // Get display media (screen capture)
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: true
+        });
+
+        mediaRecorder = new MediaRecorder(displayStream, {
+            mimeType: 'video/webm;codecs=vp8,opus'
+        });
+
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            document.body.appendChild(a);
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `recording-${Date.now()}.webm`;
+            a.click();
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            // Stop all tracks
+            displayStream.getTracks().forEach(track => track.stop());
+        };
+
+        // Start recording
+        mediaRecorder.start(1000); // Collect data every second
+        document.getElementById('startRecording').style.display = 'none';
+        document.getElementById('stopRecording').style.display = 'block';
+    } catch (err) {
+        console.error('Error during recording:', err);
+        alert('Не удалось начать запись. Убедитесь, что вы дали разрешение на запись экрана и звука.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        document.getElementById('startRecording').style.display = 'block';
+        document.getElementById('stopRecording').style.display = 'none';
+    }
+}
+
 function setup() {
   // Создаем холст в формате Instagram Reels (9:16)
   let w = windowWidth;

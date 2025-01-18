@@ -43,10 +43,40 @@
         #startButton:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+        .recording-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .recording-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .recording-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .recording-button.recording {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: rgba(255, 0, 0, 0.4);
+        }
     </style>
 </head>
 <body>
     <button id="startButton">Start Experience</button>
+    <div class="recording-controls">
+        <button id="startRecording" class="recording-button">Start Recording</button>
+        <button id="stopRecording" class="recording-button" style="display: none;">Stop Recording</button>
+    </div>
     <video id="video" width="640" height="480" autoplay></video>
     <script src="sketch.js"></script>
 </body>
