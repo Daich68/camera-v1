@@ -12,6 +12,7 @@ let handY = 0;
 let handSpeed = 0;
 let previousHandX = 0;
 let previousHandY = 0;
+let firstPrediction = true;
 let fingerDistances = [0, 0, 0, 0, 0];
 let handRotation = 0;
 let handScale = 1;
@@ -21,6 +22,7 @@ let gestureEnergy = 0;
 let previewWidth = 160;
 let previewHeight = 120;
 let previewMargin = 20;
+let previewGraphics;
 
 // Звуковые переменные
 let reverb;
@@ -107,6 +109,8 @@ function setup() {
   video = createCapture(VIDEO);
   video.size(640, 480);
   video.hide();
+
+  previewGraphics = createGraphics(previewWidth, previewHeight);
   
   const options = {
     flipHorizontal: false,
@@ -120,11 +124,20 @@ function setup() {
   detector.on("predict", results => {
     predictions = results;
     if (predictions.length > 0) {
-      previousHandX = handX;
-      previousHandY = handY;
-      handX = predictions[0].landmarks[9][0];
-      handY = predictions[0].landmarks[9][1];
-      handSpeed = dist(previousHandX, previousHandY, handX, handY);
+      if (firstPrediction) {
+        handX = predictions[0].landmarks[9][0];
+        handY = predictions[0].landmarks[9][1];
+        previousHandX = handX;
+        previousHandY = handY;
+        handSpeed = 0;
+        firstPrediction = false;
+      } else {
+        previousHandX = handX;
+        previousHandY = handY;
+        handX = predictions[0].landmarks[9][0];
+        handY = predictions[0].landmarks[9][1];
+        handSpeed = dist(previousHandX, previousHandY, handX, handY);
+      }
       
       const thumb = predictions[0].landmarks[4];
       const index = predictions[0].landmarks[8];
@@ -145,6 +158,8 @@ function setup() {
       if (isAudioStarted) {
         updateSound();
       }
+    } else {
+      firstPrediction = true;
     }
   });
 
@@ -561,23 +576,9 @@ function drawVignette() {
 
 function drawStylizedWebcam() {
   push();
-  // Получаем изображение с камеры
-  let img = video.get();
-  
-  // Применяем эффекты к изображению
-  push();
-  translate(width - previewWidth - previewMargin, previewMargin);
-  
-  // Фон для превью
-  noFill();
-  stroke(255, 30);
-  rect(-5, -5, previewWidth + 10, previewHeight + 10, 10);
-  
-  // Применяем стилизацию
-  drawingContext.globalCompositeOperation = 'screen';
-  tint(255, 150); // Прозрачность
-  image(img, 0, 0, previewWidth, previewHeight);
-  
+  // Рисуем видеопоток на вспомогательный холст
+  previewGraphics.image(video, 0, 0, previewWidth, previewHeight);
+
   // Добавляем глитч-эффект
   if (random() < 0.1) {
     let glitchX = random(previewWidth);
@@ -585,21 +586,33 @@ function drawStylizedWebcam() {
     let glitchW = random(20, 50);
     let glitchH = random(2, 5);
     let sourceY = random(previewHeight);
-    copy(img, 
+    previewGraphics.copy(previewGraphics,
          glitchX, sourceY, glitchW, glitchH,
          glitchX, glitchY, glitchW, glitchH);
   }
-  
-  // Добавляем шум
-  loadPixels();
-  for (let i = 0; i < pixels.length; i += 4) {
+
+  // Добавляем шум только к превью
+  previewGraphics.loadPixels();
+  for (let i = 0; i < previewGraphics.pixels.length; i += 4) {
     if (random() < 0.05) {
-      pixels[i] = pixels[i] + random(-20, 20);
-      pixels[i+1] = pixels[i+1] + random(-20, 20);
-      pixels[i+2] = pixels[i+2] + random(-20, 20);
+      previewGraphics.pixels[i] = previewGraphics.pixels[i] + random(-20, 20);
+      previewGraphics.pixels[i+1] = previewGraphics.pixels[i+1] + random(-20, 20);
+      previewGraphics.pixels[i+2] = previewGraphics.pixels[i+2] + random(-20, 20);
     }
   }
-  updatePixels();
+  previewGraphics.updatePixels();
+
+  translate(width - previewWidth - previewMargin, previewMargin);
+
+  // Фон для превью
+  noFill();
+  stroke(255, 30);
+  rect(-5, -5, previewWidth + 10, previewHeight + 10, 10);
+
+  // Применяем стилизацию
+  drawingContext.globalCompositeOperation = 'screen';
+  tint(255, 150); // Прозрачность
+  image(previewGraphics, 0, 0);
   
   // Рисуем рамку с свечением
   drawingContext.shadowBlur = 10;
@@ -629,7 +642,6 @@ function drawStylizedWebcam() {
     circle(handX, handY, 20 + gestureEnergy * 10);
     pop();
   }
-  pop();
 }
 
 function windowResized() {
